@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExpenseFlow — Smart Expense Tracker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0d;
+    --bg-card: #111916;
+    --bg-card-hover: #162019;
+    --fg: #e8f0ec;
+    --fg-muted: #7a9488;
+    --accent: #00e68a;
+    --accent-dim: #00b36b;
+    --accent-glow: rgba(0,230,138,0.15);
+    --danger: #ff5c5c;
+    --danger-dim: rgba(255,92,92,0.15);
+    --border: #1e2e26;
+    --warning: #ffb347;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; }
+
+  /* Animated background */
+  .bg-mesh {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 600px 400px at 10% 20%, rgba(0,230,138,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 500px 500px at 90% 80%, rgba(0,179,107,0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 300px 300px at 50% 50%, rgba(0,230,138,0.02) 0%, transparent 70%);
+  }
+
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(0,230,138,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,230,138,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    animation: orbFloat 12s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 300px; height: 300px; background: rgba(0,230,138,0.08); top: 10%; left: -5%; animation-delay: 0s; }
+  .orb-2 { width: 250px; height: 250px; background: rgba(0,179,107,0.06); bottom: 10%; right: -5%; animation-delay: -4s; }
+
+  @keyframes orbFloat {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -20px) scale(1.1); }
+    100% { transform: translate(-20px, 30px) scale(0.95); }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+  }
+  .card:hover {
+    border-color: rgba(0,230,138,0.2);
+    box-shadow: 0 0 30px rgba(0,230,138,0.05);
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+  .input-field {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--fg);
+    padding: 12px 16px;
+    font-size: 14px;
+    transition: all 0.25s ease;
+    outline: none;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .input-field::placeholder { color: var(--fg-muted); opacity: 0.6; }
+
+  select.input-field {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237a9488' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  select.input-field option { background: #111916; color: var(--fg); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0f0d;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .btn-primary:hover {
+    background: var(--accent-dim);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,230,138,0.25);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-danger {
+    background: var(--danger-dim);
+    color: var(--danger);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-danger:hover { background: rgba(255,92,92,0.25); }
+
+  .tab-btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+  }
+  .tab-btn:hover { color: var(--fg); background: rgba(255,255,255,0.03); }
+  .tab-btn.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: rgba(0,230,138,0.2);
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .toast {
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: toastIn 0.4s ease, toastOut 0.4s ease 2.6s forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  .toast-success { background: #0d2e1c; border: 1px solid rgba(0,230,138,0.3); color: var(--accent); }
+  .toast-error { background: #2e0d0d; border: 1px solid rgba(255,92,92,0.3); color: var(--danger); }
+  .toast-info { background: #1a1a0d; border: 1px solid rgba(255,179,71,0.3); color: var(--warning); }
+
+  @keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+
+  /* Expense table */
+  .expense-table-head {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 0.8fr 0.7fr 50px;
+    align-items: center;
+    padding: 12px 20px;
+    background: rgba(0,0,0,0.2);
+    font-size:11px;
+    color: var(--fg-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .expense-row {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 0.8fr 0.7fr 50px;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: all 0.2s ease;
+    gap: 12px;
+  }
+  .expense-row:hover { background: rgba(0,230,138,0.03); }
+
+  .cat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .dsa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sort-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .sort-btn:hover, .sort-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+  }
+  .modal-overlay.open .modal-content { transform: scale(1); }
+
+  .progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    .expense-table-head, .expense-row { grid-template-columns: 1.5fr 1fr 0.7fr 50px !important; }
+    .hide-mobile { display: none !important; }
+    .stat-value { font-size: 22px; }
+    .grid-resp { grid-template-columns: 1fr !important; }
+    .flex-resp { flex-direction: column !important; align-items: stretch !important; }
+    .sort-bar { flex-wrap: wrap !important; }
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+</style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-content">
+    <h3 style="font-size:20px;font-weight:600;margin-bottom:8px;">Confirm Deletion</h3>
+    <p style="color:var(--fg-muted);font-size:14px;margin-bottom:24px;">This expense will be permanently removed from your records.</p>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button onclick="closeDeleteModal()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--fg-muted);cursor:pointer;font-family:'Space Grotesk',sans-serif;">Cancel</button>
+      <button id="confirmDeleteBtn" style="padding:10px 20px;border-radius:10px;border:none;background:var(--danger);color:#fff;cursor:pointer;font-weight:600;font-family:'Space Grotesk',sans-serif;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell (Flexbox vertical) -->
+<div style="position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;">
+
+  <!-- Mobile Header -->
+  <header class="md:hidden" style="height:56px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;">
+        <i class="fas fa-chart-line" style="color:var(--bg);font-size:13px;"></i>
+      </div>
+      <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;">ExpenseFlow</span>
+    </div>
+    <button onclick="toggleMobileMenu()" style="background:transparent;border:1px solid var(--border);color:var(--fg);cursor:pointer;font-size:16px;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+      <i class="fas fa-bars"></i>
+    </button>
+  </header>
+
+  <!-- Mobile Nav -->
+  <div id="mobileNav" class="md:hidden" style="display:none;background:var(--bg-card);border-bottom:1px solid var(--border);padding:8px 12px;flex-shrink:0;">
+    <div style="display:flex;gap:6px;overflow-x:auto;">
+      <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')" style="white-space:nowrap;font-size:13px;padding:8px 14px;width:auto;"><i class="fas fa-th-large"></i> Dashboard</button>
+      <button class="tab-btn" data-tab="expenses" onclick="switchTab('expenses')" style="white-space:nowrap;font-size:13px;padding:8px 14px;width:auto;"><i class="fas fa-receipt"></i> Expenses</button>
+      <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')" style="white-space:nowrap;font-size:13px;padding:8px 14px;width:auto;"><i class="fas fa-chart-bar"></i> Analytics</button>
+      <button class="tab-btn" data-tab="categories" onclick="switchTab('categories')" style="white-space:nowrap;font-size:13px;padding:8px 14px;width:auto;"><i class="fas fa-tags"></i> Categories</button>
+      <button class="tab-btn" data-tab="dsa" onclick="switchTab('dsa')" style="white-space:nowrap;font-size:13px;padding:8px 14px;width:auto;"><i class="fas fa-code"></i> DSA</button>
+    </div>
+  </div>
+
+  <!-- Body Area -->
+  <div style="display:flex;flex:1;overflow:hidden;">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" style="width:250px;background:var(--bg-card);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;">
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 8px;margin-bottom:28px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;">
+          <i class="fas fa-chart-line" style="color:var(--bg);font-size:16px;"></i>
+        </div>
+        <div>
+          <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;">ExpenseFlow</span>
+          <div style="font-size:10px;color:var(--fg-muted);letter-spacing:1px;text-transform:uppercase;">Smart Tracker</div>
+        </div>
+      </div>
+
+      <nav style="display:flex;flex-direction:column;gap:4px;flex:1;">
+        <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')"><i class="fas fa-th-large" style="width:18px;"></i> Dashboard</button>
+        <button class="tab-btn" data-tab="expenses" onclick="switchTab('expenses')"><i class="fas fa-receipt" style="width:18px;"></i> Expenses</button>
+        <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')"><i class="fas fa-chart-bar" style="width:18px;"></i> Analytics</button>
+        <button class="tab-btn" data-tab="categories" onclick="switchTab('categories')"><i class="fas fa-tags" style="width:18px;"></i> Categories</button>
+        <button class="tab-btn" data-tab="dsa" onclick="switchTab('dsa')"><i class="fas fa-code" style="width:18px;"></i> DSA Insights</button>
+      </nav>
+
+      <div style="padding:14px;background:rgba(0,230,138,0.05);border-radius:12px;border:1px solid rgba(0,230,138,0.1);margin-top:12px;">
+        <div style="font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Powered by DSA</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          <span class="dsa-badge" style="background:rgba(0,230,138,0.1);color:var(--accent);">Linked List</span>
+          <span class="dsa-badge" style="background:rgba(255,179,71,0.1);color:var(--warning);">HashMap</span>
+          <span class="dsa-badge" style="background:rgba(108,147,255,0.1);color:#6c93ff;">Sorting</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content (scrollable) -->
+    <main class="main-content" style="flex:1;overflow-y:auto;padding:24px;">
+      <div style="max-width:1100px;margin:0 auto;">
+
+        <!-- ===== DASHBOARD TAB ===== -->
+        <section id="tab-dashboard" class="tab-content">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;" class="flex-resp">
+            <div>
+              <h1 style="font-size:26px;font-weight:700;margin-bottom:2px;">Dashboard</h1>
+              <p style="color:var(--fg-muted);font-size:13px;">Your financial overview at a glance</p>
+            </div>
+            <button class="btn-primary" onclick="openAddForm()"><i class="fas fa-plus"></i> Add Expense</button>
+          </div>
+
+          <!-- Add Form (Collapsible) -->
+          <div id="addExpenseForm" class="card" style="padding:24px;display:none;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <h3 style="font-size:16px;font-weight:600;">New Expense</h3>
+              <button onclick="closeAddForm()" style="background:transparent;border:none;color:var(--fg-muted);cursor:pointer;font-size:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+              <div>
+                <label style="font-size:12px;color:var(--fg-muted);display:block;margin-bottom:4px;font-weight:500;">Description</label>
+                <input type="text" id="expDesc" class="input-field" placeholder="e.g. Grocery shopping">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--fg-muted);display:block;margin-bottom:4px;font-weight:500;">Amount ($)</label>
+                <input type="number" id="expAmount" class="input-field" placeholder="0.00" step="0.01" min="0.01">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--fg-muted);display:block;margin-bottom:4px;font-weight:500;">Category</label>
+                <select id="expCategory" class="input-field">
+                  <option value="Food">Food & Dining</option>
+                  <option value="Transport">Transport</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Bills">Bills & Utilities</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Health">Health</option>
+                  <option value="Education">Education</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--fg-muted);display:block;margin-bottom:4px;font-weight:500;">Date</label>
+                <input type="date" id="expDate" class="input-field">
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
+              <button class="btn-primary" onclick="addExpense()"><i class="fas fa-check"></i> Save Expense</button>
+              <span style="font-size:12px;color:var(--danger);" id="formMsg"></span>
+            </div>
+          </div>
+
+          <!-- Stat Cards -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
+            <div class="card" style="padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="color:var(--fg-muted);font-size:12px;font-weight:500;">Total Expenses</span>
+                <div style="width:32px;height:32px;border-radius:8px;background:var(--accent-glow);display:flex;align-items:center;justify-content:center;"><i class="fas fa-wallet" style="color:var(--accent);font-size:12px;"></i></div>
+              </div>
+              <div class="stat-value" id="statTotal" style="color:var(--accent);">$0.00</div>
+              <div style="font-size:11px;color:var(--fg-muted);margin-top:6px;" id="statTotalCount">0 transactions</div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="color:var(--fg-muted);font-size:12px;font-weight:500;">This Month</span>
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,179,71,0.12);display:flex;align-items:center;justify-content:center;"><i class="fas fa-calendar" style="color:var(--warning);font-size:12px;"></i></div>
+              </div>
+              <div class="stat-value" id="statMonth" style="color:var(--warning);">$0.00</div>
+              <div style="font-size:11px;color:var(--fg-muted);margin-top:6px;" id="statMonthChange">Current period</div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="color:var(--fg-muted);font-size:12px;font-weight:500;">Top Category</span>
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(108,147,255,0.12);display:flex;align-items:center;justify-content:center;"><i class="fas fa-crown" style="color:#6c93ff;font-size:12px;"></i></div>
+              </div>
+              <div class="stat-value" id="statTopCat" style="color:#6c93ff;font-size:20px;">None</div>
+              <div style="font-size:11px;color:var(--fg-muted);margin-top:6px;" id="statTopCatAmount">No data yet</div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="color:var(--fg-muted);font-size:12px;font-weight:500;">Daily Average</span>
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(200,100,255,0.12);display:flex;align-items:center;justify-content:center;"><i class="fas fa-divide" style="color:#c864ff;font-size:12px;"></i></div>
+              </div>
+              <div class="stat-value" id="statAvg" style="color:#c864ff;">$0.00</div>
+              <div style="font-size:11px;color:var(--fg-muted);margin-top:6px;">Per day this month</div>
+            </div>
+          </div>
+
+          <!-- Chart + Recent -->
+          <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;" class="grid-resp">
+            <div class="card" style="padding:20px;">
+              <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">Monthly Trend</h3>
+              <div style="height:240px;"><canvas id="dashMonthlyChart"></canvas></div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 style="font-size:15px;font-weight:600;">Recent Expenses</h3>
+                <button onclick="switchTab('expenses')" style="font-size:12px;color:var(--accent);background:transparent;border:none;cursor:pointer;font-weight:500;">View All <i class="fas fa-arrow-right" style="font-size:10px;"></i></button>
+              </div>
+              <div id="recentExpenses" style="display:flex;flex-direction:column;gap:8px;max-height:248px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== EXPENSES TAB ===== -->
+        <section id="tab-expenses" class="tab-content" style="display:none;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;" class="flex-resp">
+            <div>
+              <h1 style="font-size:26px;font-weight:700;margin-bottom:2px;">Expenses</h1>
+              <p style="color:var(--fg-muted);font-size:13px;">Manage and sort all your transactions</p>
+            </div>
+            <button class="btn-primary" onclick="switchTab('dashboard');setTimeout(openAddForm,100);"><i class="fas fa-plus"></i> Add Expense</button>
+          </div>
+
+          <!-- Sort & Filter Bar -->
+          <div class="card sort-bar" style="padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--fg-muted);font-weight:500;margin-right:4px;">Sort:</span>
+            <button class="sort-btn active" data-sort="date-desc" onclick="sortExpenses('date-desc')"><i class="fas fa-arrow-down-short-wide"></i> Newest</button>
+            <button class="sort-btn" data-sort="date-asc" onclick="sortExpenses('date-asc')"><i class="fas fa-arrow-up-short-wide"></i> Oldest</button>
+            <button class="sort-btn" data-sort="amount-desc" onclick="sortExpenses('amount-desc')"><i class="fas fa-arrow-down-wide-short"></i> Highest</button>
+            <button class="sort-btn" data-sort="amount-asc" onclick="sortExpenses('amount-asc')"><i class="fas fa-arrow-up-wide-short"></i> Lowest</button>
+            <button class="sort-btn" data-sort="category" onclick="sortExpenses('category')"><i class="fas fa-tag"></i> Category</button>
+            <div style="flex:1;"></div>
+            <select id="filterCategory" class="input-field" style="width:auto;min-width:150px;padding:8px 36px 8px 12px;font-size:12px;" onchange="applyFilter()">
+              <option value="All">All Categories</option>
+              <option value="Food">Food & Dining</option>
+              <option value="Transport">Transport</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Bills">Bills & Utilities</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Health">Health</option>
+              <option value="Education">Education</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Expense Table -->
+          <div class="card" style="overflow:hidden;">
+            <div class="expense-table-head">
+              <span>Description</span>
+              <span>Category</span>
+              <span class="hide-mobile">Date</span>
+              <span style="text-align:right;">Amount</span>
+              <span></span>
+            </div>
+            <div id="expenseList" style="max-height:calc(100vh - 320px);overflow-y:auto;"></div>
+          </div>
+          <div style="margin-top:10px;text-align:center;">
+            <span style="font-size:12px;color:var(--fg-muted);" id="expenseCount">0 expenses</span>
+          </div>
+        </section>
+
+        <!-- ===== ANALYTICS TAB ===== -->
+        <section id="tab-analytics" class="tab-content" style="display:none;">
+          <div style="margin-bottom:20px;">
+            <h1 style="font-size:26px;font-weight:700;margin-bottom:2px;">Analytics</h1>
+            <p style="color:var(--fg-muted);font-size:13px;">Monthly breakdown and spending patterns</p>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <label style="font-size:13px;color:var(--fg-muted);font-weight:500;">Select Month:</label>
+            <input type="month" id="analyticsMonth" class="input-field" style="width:auto;" onchange="updateAnalytics()">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;" class="grid-resp">
+            <div class="card" style="padding:20px;">
+              <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">Category Distribution</h3>
+              <div style="height:280px;display:flex;align-items:center;justify-content:center;"><canvas id="pieChart"></canvas></div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">Monthly Breakdown</h3>
+              <div id="monthlyBreakdown" style="display:flex;flex-direction:column;gap:10px;max-height:290px;overflow-y:auto;"></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:20px;">
+            <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">6-Month Spending Trend</h3>
+            <div style="height:280px;"><canvas id="analyticsBarChart"></canvas></div>
+          </div>
+        </section>
+
+        <!-- ===== CATEGORIES TAB ===== -->
+        <section id="tab-categories" class="tab-content" style="display:none;">
+          <div style="margin-bottom:20px;">
+            <h1 style="font-size:26px;font-weight:700;margin-bottom:2px;">Categories</h1>
+            <p style="color:var(--fg-muted);font-size:13px;">Category-wise expense tracking powered by HashMap</p>
+          </div>
+          <div id="categoryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;"></div>
+        </section>
+
+        <!-- ===== DSA TAB ===== -->
+        <section id="tab-dsa" class="tab-content" style="display:none;">
+          <div style="margin-bottom:20px;">
+            <h1 style="font-size:26px;font-weight:700;margin-bottom:2px;">DSA Insights</h1>
+            <p style="color:var(--fg-muted);font-size:13px;">Understand the data structures and algorithms powering this tracker</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:14px;">
+            <!-- Linked List -->
+            <div class="card" style="padding:24px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:var(--accent-glow);display:flex;align-items:center;justify-content:center;"><i class="fas fa-link" style="color:var(--accent);font-size:16px;"></i></div>
+                <div><h3 style="font-size:16px;font-weight:600;">Linked List</h3><span class="dsa-badge" style="background:var(--accent-glow);color:var(--accent);">Core Storage</span></div>
+              </div>
+              <p style="font-size:12px;color:var(--fg-muted);line-height:1.6;margin-bottom:14px;">Expenses are stored as nodes in a doubly linked list. Each node holds expense data and pointers to prev/next nodes. This allows O(1) insertion at the tail.</p>
+              <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;line-height:1.7;color:var(--fg-muted);">
+                <span style="color:var(--accent);">Node</span> { data, prev, next }<br>
+                <span style="color:var(--accent);">insertTail</span>(expense) → O(1)<br>
+                <span style="color:var(--accent);">deleteNode</span>(id) → O(n)<br>
+                <span style="color:var(--accent);">traverse</span>() → O(n)
+              </div>
+              <div style="margin-top:12px;padding:10px;background:rgba(0,230,138,0.05);border-radius:8px;border:1px solid rgba(0,230,138,0.1);">
+                <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:4px;">LIVE STATUS</div>
+                <div style="font-size:12px;" id="dsaLinkedListStatus">0 nodes in list</div>
+              </div>
+            </div>
+
+            <!-- HashMap -->
+            <div class="card" style="padding:24px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,179,71,0.12);display:flex;align-items:center;justify-content:center;"><i class="fas fa-hashtag" style="color:var(--warning);font-size:16px;"></i></div>
+                <div><h3 style="font-size:16px;font-weight:600;">HashMap</h3><span class="dsa-badge" style="background:rgba(255,179,71,0.1);color:var(--warning);">Indexing</span></div>
+              </div>
+              <p style="font-size:12px;color:var(--fg-muted);line-height:1.6;margin-bottom:14px;">A custom hash map indexes expenses by category for O(1) average lookup. Uses chaining for collision resolution.</p>
+              <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;line-height:1.7;color:var(--fg-muted);">
+                <span style="color:var(--warning);">hash</span>(key) → bucket index<br>
+                <span style="color:var(--warning);">put</span>(key, value) → O(1) avg<br>
+                <span style="color:var(--warning);">get</span>(key) → O(1) avg<br>
+                <span style="color:var(--warning);">Chaining</span> for collisions
+              </div>
+              <div style="margin-top:12px;padding:10px;background:rgba(255,179,71,0.05);border-radius:8px;border:1px solid rgba(255,179,71,0.1);">
+                <div style="font-size:10px;color:var(--warning);font-weight:600;margin-bottom:4px;">LIVE STATUS</div>
+                <div style="font-size:12px;" id="dsaHashMapStatus">0 buckets, 0 entries</div>
+              </div>
+            </div>
+
+            <!-- Sorting -->
+            <div class="card" style="padding:24px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(108,147,255,0.12);display:flex;align-items:center;justify-content:center;"><i class="fas fa-sort" style="color:#6c93ff;font-size:16px;"></i></div>
+                <div><h3 style="font-size:16px;font-weight:600;">Sorting</h3><span class="dsa-badge" style="background:rgba(108,147,255,0.1);color:#6c93ff;">Ordering</span></div>
+              </div>
+              <p style="font-size:12px;color:var(--fg-muted);line-height:1.6;margin-bottom:14px;">Merge Sort algorithm arranges expenses by date, amount, or category key. O(n log n) with stable sorting.</p>
+              <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;line-height:1.7;color:var(--fg-muted);">
+                <span style="color:#6c93ff;">mergeSort</span>(arr, comp) → O(n log n)<br>
+                <span style="color:#6c93ff;">merge</span>(left, right, comp)<br>
+                <span style="color:#6c93ff;">Comparator</span>: date | amount | cat<br>
+                <span style="color:#6c93ff;">Stable</span>: Yes
+              </div>
+              <div style="margin-top:12px;padding:10px;background:rgba(108,147,255,0.05);border-radius:8px;border:1px solid rgba(108,147,255,0.1);">
+                <div style="font-size:10px;color:#6c93ff;font-weight:600;margin-bottom:4px;">LIVE STATUS</div>
+                <div style="font-size:12px;" id="dsaSortStatus">No sorts performed yet</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visualizations -->
+          <div class="card" style="padding:24px;margin-bottom:14px;">
+            <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">Linked List Visualization</h3>
+            <div id="linkedListViz" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:12px 0;font-family:monospace;font-size:12px;"></div>
+          </div>
+
+          <div class="card" style="padding:24px;">
+            <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">HashMap Bucket Visualization</h3>
+            <div id="hashMapViz" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;"></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ========================
+// DSA IMPLEMENTATIONS
+// ========================
+
+// --- Doubly Linked List ---
+class ListNode {
+  constructor(data) {
+    this.data = data;
+    this.prev = null;
+    this.next = null;
+  }
+}
+
+class DoublyLinkedList {
+  constructor() {
+    this.head = null;
+    this.tail = null;
+    this.size = 0;
+  }
+
+  insertTail(data) {
+    const node = new ListNode(data);
+    if (!this.head) {
+      this.head = node;
+      this.tail = node;
+    } else {
+      this.tail.next = node;
+      node.prev = this.tail;
+      this.tail = node;
+    }
+    this.size++;
+    return node;
+  }
+
+  deleteById(id) {
+    let current = this.head;
+    while (current) {
+      if (current.data.id === id) {
+        if (current.prev) current.prev.next = current.next;
+        else this.head = current.next;
+        if (current.next) current.next.prev = current.prev;
+        else this.tail = current.prev;
+        this.size--;
+        return current.data;
+      }
+      current = current.next;
+    }
+    return null;
+  }
+
+  findById(id) {
+    let current = this.head;
+    while (current) {
+      if (current.data.id === id) return current.data;
+      current = current.next;
+    }
+    return null;
+  }
+
+  toArray() {
+    const arr = [];
+    let current = this.head;
+    while (current) {
+      arr.push(current.data);
+      current = current.next;
+    }
+    return arr;
+  }
+
+  traverse(callback) {
+    let current = this.head;
+    let index = 0;
+    while (current) {
+      callback(current.data, index);
+      current = current.next;
+      index++;
+    }
+  }
+}
+
+// --- HashMap with Chaining ---
+class HashMap {
+  constructor(capacity = 16) {
+    this.capacity = capacity;
+    this.buckets = new Array(capacity).fill(null).map(() => []);
+    this.count = 0;
+  }
+
+  hash(key) {
+    let hash = 0;
+    const str = String(key);
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 31 + str.charCodeAt(i)) % this.capacity;
+    }
+    return hash;
+  }
+
+  put(key, value) {
+    const index = this.hash(key);
+    const bucket = this.buckets[index];
+    for (let i = 0; i < bucket.length; i++) {
+      if (bucket[i].key === key) {
+        bucket[i].value = value;
+        return;
+      }
+    }
+    bucket.push({ key, value });
+    this.count++;
+  }
+
+  get(key) {
+    const index = this.hash(key);
+    const bucket = this.buckets[index];
+    for (let i = 0; i < bucket.length; i++) {
+      if (bucket[i].key === key) return bucket[i].value;
+    }
+    return undefined;
+  }
+
+  keys() {
+    const allKeys = [];
+    for (const bucket of this.buckets) {
+      for (const entry of bucket) allKeys.push(entry.key);
+    }
+    return allKeys;
+  }
+
+  entries() {
+    const all = [];
+    for (let i = 0; i < this.buckets.length; i++) {
+      for (const entry of this.buckets[i]) all.push({ ...entry, bucketIndex: i });
+    }
+    return all;
+  }
+
+  remove(key) {
+    const index = this.hash(key);
+    const bucket = this.buckets[index];
+    for (let i = 0; i < bucket.length; i++) {
+      if (bucket[i].key === key) {
+        bucket.splice(i, 1);
+        this.count--;
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+// --- Merge Sort ---
+function mergeSort(arr, comparator) {
+  if (arr.length <= 1) return arr;
+  const mid = Math.floor(arr.length / 2);
+  const left = mergeSort(arr.slice(0, mid), comparator);
+  const right = mergeSort(arr.slice(mid), comparator);
+  return merge(left, right, comparator);
+}
+
+function merge(left, right, comparator) {
+  const result = [];
+  let i = 0, j = 0;
+  while (i < left.length && j < right.length) {
+    if (comparator(left[i], right[j]) <= 0) {
+      result.push(left[i++]);
+    } else {
+      result.push(right[j++]);
+    }
+  }
+  while (i < left.length) result.push(left[i++]);
+  while (j < right.length) result.push(right[j++]);
+  return result;
+}
+
+// ========================
+// APP STATE
+// ========================
+const expenseList = new DoublyLinkedList();
+const categoryMap = new HashMap(16);
+let currentSort = 'date-desc';
+let currentFilter = 'All';
+let sortCount = 0;
+let nextId = 1;
+
+const CATEGORIES = {
+  Food: { icon: 'fa-utensils', color: '#00e68a', bg: 'rgba(0,230,138,0.1)' },
+  Transport: { icon: 'fa-car', color: '#6c93ff', bg: 'rgba(108,147,255,0.1)' },
+  Shopping: { icon: 'fa-bag-shopping', color: '#ff7eb3', bg: 'rgba(255,126,179,0.1)' },
+  Bills: { icon: 'fa-file-invoice', color: '#ffb347', bg: 'rgba(255,179,71,0.1)' },
+  Entertainment: { icon: 'fa-gamepad', color: '#c864ff', bg: 'rgba(200,100,255,0.1)' },
+  Health: { icon: 'fa-heart-pulse', color: '#ff5c5c', bg: 'rgba(255,92,92,0.1)' },
+  Education: { icon: 'fa-graduation-cap', color: '#5ce1e6', bg: 'rgba(92,225,230,0.1)' },
+  Other: { icon: 'fa-ellipsis', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' }
+};
+
+// ========================
+// SEED DATA
+// ========================
+function seedData() {
+  const seeds = [
+    { desc: 'Weekly grocery haul', amount: 85.50, category: 'Food', date: '2025-01-08' },
+    { desc: 'Uber to office', amount: 12.00, category: 'Transport', date: '2025-01-10' },
+    { desc: 'Netflix subscription', amount: 15.99, category: 'Entertainment', date: '2025-01-12' },
+    { desc: 'Electric bill January', amount: 120.00, category: 'Bills', date: '2025-01-15' },
+    { desc: 'New running shoes', amount: 89.99, category: 'Shopping', date: '2025-01-18' },
+    { desc: 'Dentist checkup', amount: 65.00, category: 'Health', date: '2025-01-20' },
+    { desc: 'Online Python course', amount: 49.99, category: 'Education', date: '2025-01-22' },
+    { desc: 'Coffee shop', amount: 6.50, category: 'Food', date: '2025-01-25' },
+    { desc: 'Gas station fill-up', amount: 45.00, category: 'Transport', date: '2025-02-01' },
+    { desc: 'Valentine dinner', amount: 95.00, category: 'Food', date: '2025-02-14' },
+    { desc: 'Internet bill February', amount: 75.00, category: 'Bills', date: '2025-02-10' },
+    { desc: 'Concert tickets', amount: 120.00, category: 'Entertainment', date: '2025-02-18' },
+    { desc: 'Pharmacy vitamins', amount: 28.50, category: 'Health', date: '2025-02-20' },
+    { desc: 'Bookstore purchase', amount: 34.00, category: 'Education', date: '2025-03-02' },
+    { desc: 'March grocery run', amount: 92.00, category: 'Food', date: '2025-03-05' },
+    { desc: 'Subway pass reload', amount: 33.00, category: 'Transport', date: '2025-03-08' },
+    { desc: 'Water bill March', amount: 42.00, category: 'Bills', date: '2025-03-12' },
+    { desc: 'Streaming music annual', amount: 99.00, category: 'Entertainment', date: '2025-03-15' },
+    { desc: 'Gym membership', amount: 40.00, category: 'Health', date: '2025-03-18' },
+    { desc: 'Spring jacket', amount: 110.00, category: 'Shopping', date: '2025-04-01' },
+    { desc: 'April groceries', amount: 78.00, category: 'Food', date: '2025-04-06' },
+    { desc: 'Parking fines', amount: 55.00, category: 'Other', date: '2025-04-10' },
+    { desc: 'Electricity bill April', amount: 98.00, category: 'Bills', date: '2025-04-15' },
+    { desc: 'Taxi to airport', amount: 38.00, category: 'Transport', date: '2025-05-02' },
+    { desc: 'May groceries', amount: 88.00, category: 'Food', date: '2025-05-08' },
+    { desc: 'Movie night', amount: 25.00, category: 'Entertainment', date: '2025-05-15' },
+    { desc: 'Phone bill May', amount: 55.00, category: 'Bills', date: '2025-05-12' },
+    { desc: 'Summer wardrobe', amount: 145.00, category: 'Shopping', date: '2025-06-01' },
+    { desc: 'June groceries', amount: 96.00, category: 'Food', date: '2025-06-05' },
+    { desc: 'Road trip gas', amount: 62.00, category: 'Transport', date: '2025-06-15' },
+  ];
+  seeds.forEach(s => {
+    const expense = { id: nextId++, ...s };
+    expenseList.insertTail(expense);
+  });
+  rebuildCategoryMap();
+}
+
+// ========================
+// CATEGORY MAP REBUILD
+// ========================
+function rebuildCategoryMap() {
+  categoryMap.buckets = new Array(categoryMap.capacity).fill(null).map(() => []);
+  categoryMap.count = 0;
+  expenseList.traverse((expense) => {
+    const cat = expense.category;
+    if (!categoryMap.get(cat)) categoryMap.put(cat, []);
+    categoryMap.get(cat).push(expense);
+  });
+}
+
+// ========================
+// ADD EXPENSE
+// ========================
+function addExpense() {
+  const desc = document.getElementById('expDesc').value.trim();
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  const category = document.getElementById('expCategory').value;
+  const date = document.getElementById('expDate').value;
+
+  if (!desc) { showToast('Please enter a description', 'error'); return; }
+  if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'error'); return; }
+  if (!date) { showToast('Please select a date', 'error'); return; }
+
+  const expense = { id: nextId++, desc, amount, category, date };
+  expenseList.insertTail(expense);
+
+  if (!categoryMap.get(category)) categoryMap.put(category, []);
+  categoryMap.get(category).push(expense);
+
+  document.getElementById('expDesc').value = '';
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expDate').value = '';
+  document.getElementById('formMsg').textContent = '';
+
+  showToast(`$${amount.toFixed(2)} — ${desc} added successfully`, 'success');
+  refreshAll();
+}
+
+// ========================
+// DELETE EXPENSE
+// ========================
+let pendingDeleteId = null;
+
+function requestDelete(id) {
+  pendingDeleteId = id;
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('open');
+  pendingDeleteId = null;
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+  if (pendingDeleteId !== null) {
+    const deleted = expenseList.deleteById(pendingDeleteId);
+    if (deleted) {
+      rebuildCategoryMap();
+      showToast('Expense deleted', 'info');
+      refreshAll();
+    }
+  }
+  closeDeleteModal();
+});
+
+// ========================
+// SORT EXPENSES
+// ========================
+function sortExpenses(sortType) {
+  currentSort = sortType;
+  sortCount++;
+  document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.sort === sortType));
+  refreshExpenseList();
+}
+
+function getSortedArray() {
+  const arr = expenseList.toArray();
+  let filtered = currentFilter === 'All' ? arr : arr.filter(e => e.category === currentFilter);
+
+  let comparator;
+  switch (currentSort) {
+    case 'date-desc': comparator = (a, b) => new Date(b.date) - new Date(a.date); break;
+    case 'date-asc': comparator = (a, b) => new Date(a.date) - new Date(b.date); break;
+    case 'amount-desc': comparator = (a, b) => b.amount - a.amount; break;
+    case 'amount-asc': comparator = (a, b) => a.amount - b.amount; break;
+    case 'category': comparator = (a, b) => a.category.localeCompare(b.category); break;
+    default: comparator = (a, b) => new Date(b.date) - new Date(a.date);
+  }
+  return mergeSort(filtered, comparator);
+}
+
+function applyFilter() {
+  currentFilter = document.getElementById('filterCategory').value;
+  refreshExpenseList();
+}
+
+// ========================
+// UI RENDERING
+// ========================
+function refreshAll() {
+  refreshDashboard();
+  refreshExpenseList();
+  refreshAnalytics();
+  refreshCategories();
+  refreshDSA();
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3200);
+}
+
+function openAddForm() {
+  const form = document.getElementById('addExpenseForm');
+  form.style.display = 'block';
+  document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function closeAddForm() {
+  document.getElementById('addExpenseForm').style.display = 'none';
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+  document.querySelectorAll(`[data-tab="${tab}"]`).forEach(btn => btn.classList.add('active'));
+
+  if (tab === 'analytics') refreshAnalytics();
+  if (tab === 'dsa') refreshDSA();
+  if (tab === 'categories') refreshCategories();
+
+  // Close mobile nav on tab switch
+  document.getElementById('mobileNav').style.display = 'none';
+}
+
+function toggleMobileMenu() {
+  const nav = document.getElementById('mobileNav');
+  nav.style.display = nav.style.display === 'none' ? 'block' : 'none';
+}
+
+// --- Dashboard ---
+function refreshDashboard() {
+  const all = expenseList.toArray();
+  const total = all.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('statTotal').textContent = `$${total.toFixed(2)}`;
+  document.getElementById('statTotalCount').textContent = `${all.length} transaction${all.length !== 1 ? 's' : ''}`;
+
+  const now = new Date();
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonth = all.filter(e => e.date.startsWith(monthStr));
+  const monthTotal = thisMonth.reduce((s, e) => s + e.amount, 0);
+  document.getElementById('statMonth').textContent = `$${monthTotal.toFixed(2)}`;
+
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+  const lastMonthTotal = all.filter(e => e.date.startsWith(lastMonthStr)).reduce((s, e) => s + e.amount, 0);
+  if (lastMonthTotal > 0) {
+    const change = ((monthTotal - lastMonthTotal) / lastMonthTotal * 100).toFixed(1);
+    document.getElementById('statMonthChange').innerHTML = `<span style="color:${change >= 0 ? 'var(--danger)' : 'var(--accent)'}">${change >= 0 ? '+' : ''}${change}%</span> vs last month`;
+  } else {
+    document.getElementById('statMonthChange').textContent = 'Current period';
+  }
+
+  let topCat = 'None', topAmount = 0;
+  categoryMap.keys().forEach(key => {
+    const catTotal = (categoryMap.get(key) || []).reduce((s, e) => s + e.amount, 0);
+    if (catTotal > topAmount) { topAmount = catTotal; topCat = key; }
+  });
+  document.getElementById('statTopCat').textContent = topCat;
+  document.getElementById('statTopCatAmount').textContent = topAmount > 0 ? `$${topAmount.toFixed(2)} total` : 'No data yet';
+
+  const dayOfMonth = Math.max(1, now.getDate());
+  document.getElementById('statAvg').textContent = `$${(monthTotal / dayOfMonth).toFixed(2)}`;
+
+  // Recent expenses
+  const recent = all.slice(-5).reverse();
+  const recentEl = document.getElementById('recentExpenses');
+  if (recent.length === 0) {
+    recentEl.innerHTML = '<div style="text-align:center;color:var(--fg-muted);padding:32px;font-size:13px;">No expenses yet. Add your first one!</div>';
+  } else {
+    recentEl.innerHTML = recent.map(e => {
+      const cat = CATEGORIES[e.category] || CATEGORIES.Other;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+        <div style="width:34px;height:34px;border-radius:8px;background:${cat.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas ${cat.icon}" style="color:${cat.color};font-size:12px;"></i></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.desc}</div><div style="font-size:11px;color:var(--fg-muted);">${formatDate(e.date)}</div></div>
+        <div style="font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;color:var(--danger);flex-shrink:0;">-$${e.amount.toFixed(2)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  renderDashMonthlyChart(all);
+}
+
+// --- Expense List ---
+function refreshExpenseList() {
+  const sorted = getSortedArray();
+  const listEl = document.getElementById('expenseList');
+
+  if (sorted.length === 0) {
+    listEl.innerHTML = '<div style="text-align:center;color:var(--fg-muted);padding:40px;font-size:13px;"><i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:10px;opacity:0.3;"></i>No expenses found</div>';
+  } else {
+    listEl.innerHTML = sorted.map(e => {
+      const cat = CATEGORIES[e.category] || CATEGORIES.Other;
+      return `<div class="expense-row fade-in">
+        <div><div style="font-weight:500;font-size:13px;">${e.desc}</div><div style="font-size:10px;color:var(--fg-muted);margin-top:1px;">ID: #${e.id}</div></div>
+        <div><span class="cat-badge" style="background:${cat.bg};color:${cat.color};"><i class="fas ${cat.icon}" style="font-size:10px;"></i> ${e.category}</span></div>
+        <div class="hide-mobile" style="color:var(--fg-muted);font-size:12px;">${formatDate(e.date)}</div>
+        <div style="text-align:right;font-weight:600;font-family:'Space Grotesk',sans-serif;font-size:14px;">$${e.amount.toFixed(2)}</div>
+        <div style="text-align:right;"><button class="btn-danger" onclick="requestDelete(${e.id})"><i class="fas fa-trash-alt"></i></button></div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('expenseCount').textContent = `${sorted.length} expense${sorted.length !== 1 ? 's' : ''}`;
+}
+
+// --- Analytics ---
+let pieChart = null;
+let analyticsBarChartInstance = null;
+
+function refreshAnalytics() {
+  const now = new Date();
+  const defMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthInput = document.getElementById('analyticsMonth');
+  if (!monthInput.value) monthInput.value = defMonth;
+  updateAnalytics();
+}
+
+function updateAnalytics() {
+  const monthVal = document.getElementById('analyticsMonth').value;
+  const all = expenseList.toArray();
+  const monthExpenses = monthVal ? all.filter(e => e.date.startsWith(monthVal)) : all;
+
+  const catTotals = {};
+  monthExpenses.forEach(e => { catTotals[e.category] = (catTotals[e.category] || 0) + e.amount; });
+
+  const catKeys = Object.keys(catTotals);
+  const catValues = catKeys.map(k => catTotals[k]);
+  const catColors = catKeys.map(k => (CATEGORIES[k] || CATEGORIES.Other).color);
+
+  if (pieChart) pieChart.destroy();
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: catKeys,
+      datasets: [{ data: catValues, backgroundColor: catColors, borderColor: 'rgba(17,25,22,0.8)', borderWidth: 3, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#7a9488', font: { family: 'DM Sans', size: 11 }, padding: 14 } } }
+    }
+  });
+
+  const breakdownEl = document.getElementById('monthlyBreakdown');
+  const monthTotal = catValues.reduce((s, v) => s + v, 0);
+
+  if (catKeys.length === 0) {
+    breakdownEl.innerHTML = '<div style="text-align:center;color:var(--fg-muted);padding:32px;font-size:13px;">No data for this period</div>';
+  } else {
+    const sorted = catKeys.map(k => ({ key: k, total: catTotals[k] })).sort((a, b) => b.total - a.total);
+    breakdownEl.innerHTML = sorted.map(item => {
+      const cat = CATEGORIES[item.key] || CATEGORIES.Other;
+      const pct = monthTotal > 0 ? (item.total / monthTotal * 100) : 0;
+      return `<div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="width:26px;height:26px;border-radius:6px;background:${cat.bg};display:flex;align-items:center;justify-content:center;"><i class="fas ${cat.icon}" style="color:${cat.color};font-size:10px;"></i></div>
+            <span style="font-size:12px;font-weight:500;">${item.key}</span>
+          </div>
+          <div style="text-align:right;"><span style="font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;">$${item.total.toFixed(2)}</span><span style="font-size:10px;color:var(--fg-muted);margin-left:4px;">${pct.toFixed(1)}%</span></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${cat.color};"></div></div>
+      </div>`;
+    }).join('') + `<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:600;">Total</span>
+      <span style="font-size:16px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--accent);">$${monthTotal.toFixed(2)}</span>
+    </div>`;
+  }
+
+  renderAnalyticsBarChart(all, monthVal);
+}
+
+function renderAnalyticsBarChart(all, currentMonth) {
+  const months = [];
+  const d = new Date(currentMonth ? currentMonth + '-01' : new Date());
+  for (let i = 5; i >= 0; i--) {
+    const md = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    months.push(`${md.getFullYear()}-${String(md.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const monthLabels = months.map(m => { const dt = new Date(m + '-01'); return dt.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); });
+
+  const datasets = Object.keys(CATEGORIES).map(catKey => {
+    const cat = CATEGORIES[catKey];
+    return {
+      label: catKey,
+      data: months.map(m => all.filter(e => e.date.startsWith(m) && e.category === catKey).reduce((s, e) => s + e.amount, 0)),
+      backgroundColor: cat.color + '80',
+      borderColor: cat.color,
+      borderWidth: 1,
+      borderRadius: 3,
+    };
+  });
+
+  if (analyticsBarChartInstance) analyticsBarChartInstance.destroy();
+  const ctx = document.getElementById('analyticsBarChart').getContext('2d');
+  analyticsBarChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: monthLabels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#7a9488', font: { family: 'DM Sans', size: 11 } } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#7a9488', font: { family: 'DM Sans', size: 11 }, callback: v => '$' + v } }
+      },
+      plugins: { legend: { position: 'bottom', labels: { color: '#7a9488', font: { family: 'DM Sans', size: 10 }, padding: 10, usePointStyle: true, pointStyle: 'rectRounded' } } }
+    }
+  });
+}
+
+let dashMonthlyChartInstance = null;
+function renderDashMonthlyChart(all) {
+  const months = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const md = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${md.getFullYear()}-${String(md.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const monthLabels = months.map(m => { const dt = new Date(m + '-01'); return dt.toLocaleDateString('en-US', { month: 'short' }); });
+  const monthTotals = months.map(m => all.filter(e => e.date.startsWith(m)).reduce((s, e) => s + e.amount, 0));
+
+  if (dashMonthlyChartInstance) dashMonthlyChartInstance.destroy();
+  const ctx = document.getElementById('dashMonthlyChart').getContext('2d');
+  dashMonthlyChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: monthLabels, datasets: [{ label: 'Spending', data: monthTotals, backgroundColor: 'rgba(0,230,138,0.3)', borderColor: '#00e68a', borderWidth: 2, borderRadius: 6, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#7a9488', font: { family: 'DM Sans', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#7a9488', font: { family: 'DM Sans', size: 11 }, callback: v => '$' + v } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// --- Categories ---
+function refreshCategories() {
+  const container = document.getElementById('categoryCards');
+  const all = expenseList.toArray();
+  const totalAmount = all.reduce((s, e) => s + e.amount, 0);
+
+  container.innerHTML = Object.keys(CATEGORIES).map(catKey => {
+    const cat = CATEGORIES[catKey];
+    const expenses = categoryMap.get(catKey) || [];
+    const catTotal = expenses.reduce((s, e) => s + e.amount, 0);
+    const pct = totalAmount > 0 ? (catTotal / totalAmount * 100) : 0;
+    const recent3 = expenses.slice(-3).reverse();
+
+    return `<div class="card" style="padding:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:${cat.bg};display:flex;align-items:center;justify-content:center;"><i class="fas ${cat.icon}" style="color:${cat.color};font-size:16px;"></i></div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:600;">${catKey}</div><div style="font-size:11px;color:var(--fg-muted);">${expenses.length} transaction${expenses.length !== 1 ? 's' : ''}</div></div>
+        <div style="text-align:right;"><div style="font-size:18px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:${cat.color};">$${catTotal.toFixed(2)}</div><div style="font-size:10px;color:var(--fg-muted);">${pct.toFixed(1)}%</div></div>
+      </div>
+      <div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${pct}%;background:${cat.color};"></div></div>
+      ${recent3.length > 0 ? recent3.map(e => `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:11px;"><span style="color:var(--fg-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:65%;">${e.desc}</span><span style="font-weight:500;">$${e.amount.toFixed(2)}</span></div>`).join('') : '<div style="font-size:11px;color:var(--fg-muted);">No expenses in this category</div>'}
+    </div>`;
+  }).join('');
+}
+
+// --- DSA Insights ---
+function refreshDSA() {
+  document.getElementById('dsaLinkedListStatus').textContent = `${expenseList.size} node${expenseList.size !== 1 ? 's' : ''} in list`;
+  document.getElementById('dsaHashMapStatus').textContent = `${categoryMap.capacity} buckets, ${categoryMap.count} entries`;
+  document.getElementById('dsaSortStatus').textContent = sortCount > 0 ? `${sortCount} sort operation${sortCount > 1 ? 's' : ''} performed` : 'No sorts performed yet';
+
+  // Linked list viz
+  const vizEl = document.getElementById('linkedListViz');
+  const all = expenseList.toArray();
+  const showNodes = all.slice(0, 6);
+
+  if (showNodes.length === 0) {
+    vizEl.innerHTML = '<div style="color:var(--fg-muted);padding:12px;font-family:DM Sans,sans-serif;">Empty list — add expenses to see visualization</div>';
+  } else {
+    let html = '<div style="padding:6px 10px;background:rgba(0,230,138,0.1);border:1px solid rgba(0,230,138,0.2);border-radius:6px;color:var(--accent);font-size:11px;flex-shrink:0;">HEAD</div>';
+    html += '<div style="color:var(--fg-muted);margin:0 6px;flex-shrink:0;">→</div>';
+    showNodes.forEach((e, i) => {
+      const cat = CATEGORIES[e.category] || CATEGORIES.Other;
+      html += `<div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:6px 10px;min-width:70px;flex-shrink:0;">
+        <div style="color:${cat.color};font-size:9px;font-weight:600;">#${e.id}</div>
+        <div style="font-size:10px;">$${e.amount.toFixed(0)}</div>
+      </div>`;
+      if (i < showNodes.length - 1) html += '<div style="color:var(--fg-muted);margin:0 4px;flex-shrink:0;">⇄</div>';
+    });
+    if (all.length > 6) { html += '<div style="color:var(--fg-muted);margin:0 6px;flex-shrink:0;">→</div><div style="color:var(--fg-muted);font-size:11px;flex-shrink:0;">+' + (all.length - 6) + ' more</div>'; }
+    html += '<div style="color:var(--fg-muted);margin:0 6px;flex-shrink:0;">→</div>';
+    html += '<div style="padding:6px 10px;background:rgba(255,179,71,0.1);border:1px solid rgba(255,179,71,0.2);border-radius:6px;color:var(--warning);font-size:11px;flex-shrink:0;">TAIL</div>';
+    vizEl.innerHTML = html;
+  }
+
+  // HashMap viz
+  const hmVizEl = document.getElementById('hashMapViz');
+  let hmHtml = '';
+  for (let i = 0; i < categoryMap.capacity; i++) {
+    const bucket = categoryMap.buckets[i];
+    const hasItems = bucket.length > 0;
+    hmHtml += `<div style="background:${hasItems ? 'rgba(255,179,71,0.05)' : 'rgba(0,0,0,0.15)'};border:1px solid ${hasItems ? 'rgba(255,179,71,0.15)' : 'var(--border)'};border-radius:6px;padding:8px;font-size:10px;">
+      <div style="color:var(--warning);font-weight:600;margin-bottom:3px;">Bucket ${i}</div>
+      ${hasItems ? bucket.map(entry => `<div style="color:var(--fg-muted);font-size:9px;margin-top:1px;"><span style="color:var(--fg);">${entry.key}</span>: ${entry.value.length}</div>`).join('') : '<div style="color:var(--fg-muted);opacity:0.3;font-size:9px;">empty</div>'}
+    </div>`;
+  }
+  hmVizEl.innerHTML = hmHtml;
+}
+
+// ========================
+// INITIALIZE
+// ========================
+seedData();
+refreshAll();
+
+// Set default analytics month
+const nowInit = new Date();
+document.getElementById('analyticsMonth').value = `${nowInit.getFullYear()}-${String(nowInit.getMonth() + 1).padStart(2, '0')}`;
+</script>
+</body>
+</html>
