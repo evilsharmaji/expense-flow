@@ -117,7 +117,7 @@ ExpenseFlow/
 
 ## 👨‍💻 Author
 
-**Priyanshu**  
+**Priyanshu Sharma**  
 B.Tech CSE (Data Science)
 
 ---
